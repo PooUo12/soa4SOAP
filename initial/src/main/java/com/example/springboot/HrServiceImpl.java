@@ -2,11 +2,17 @@ package com.example.springboot;
 
 import com.example.springboot.POJO.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
 import jakarta.annotation.PostConstruct;
 import jakarta.jws.WebService;
+import org.apache.cxf.frontend.FaultInfoException;
+import org.apache.cxf.interceptor.Fault;
+import org.apache.cxf.interceptor.InInterceptors;
+import org.apache.cxf.message.Message;
+import org.apache.cxf.message.MessageImpl;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -47,7 +53,9 @@ public class HrServiceImpl implements HrService{
 
     @Transactional
     @Override
-    public String fireWorker(String Id){
+    public Out fireWorker(String Id){
+        Errors errors = new Errors();
+        Out out = new Out();
 
         Map.Entry<String, Integer> error = null;
         int workerId;
@@ -55,7 +63,14 @@ public class HrServiceImpl implements HrService{
         try{
             workerId = Integer.parseInt(Id);
         } catch (NumberFormatException e){
-            return "422: Id should be integer";
+            errors.addError(422, "Id should be integer");
+            out.setStatus(422);
+            try {
+                out.setMsg(mapper.writeValueAsString(errors));
+            } catch (JsonProcessingException ex) {
+                throw new RuntimeException(ex);
+            }
+            return out;
         }
 //        https://127.0.0.1:8443/worker-0.0.1/api/workers/
         try {
@@ -64,46 +79,75 @@ public class HrServiceImpl implements HrService{
                     .asString();
             String responseBody = jsonResponse.getBody();
             if (jsonResponse.getStatus() == 404){
-                return "503: " + "Callable service is down";
+                errors.addError(503, "Callable service is down");
+                out.setStatus(503);
+                out.setMsg(mapper.writeValueAsString(errors));
+                return out;
             }
             if (jsonResponse.getStatus() != 200) {
-                return "422: Worker does not exist";
+                errors.addError(422, "Worker does not exist");
+                out.setStatus(422);
+                out.setMsg(mapper.writeValueAsString(errors));
+                return out;
             }
             Worker worker = mapper.readValue(responseBody, Worker.class);
             if (worker.getStatus().equalsIgnoreCase(Status.FIRED.toString())) {
-                return "422: Worker is already fired";
+                errors.addError(422, "Worker is already fired");
+                out.setStatus(422);
+                out.setMsg(mapper.writeValueAsString(errors));
+                return out;
             }
-            Worker out = new Worker();
-            out.setName(worker.getName());
-            out.setSalary(worker.getSalary());
-            out.setCreationDate(worker.getCreationDate());
-            out.setStartDate(worker.getStartDate());
-            out.setEndDate(worker.getEndDate());
-            out.setStatus(Status.FIRED.toString());
+            Worker outw = new Worker();
+            outw.setName(worker.getName());
+            outw.setSalary(worker.getSalary());
+            outw.setCreationDate(worker.getCreationDate());
+            outw.setStartDate(worker.getStartDate());
+            outw.setEndDate(worker.getEndDate());
+            outw.setStatus(Status.FIRED.toString());
             HttpResponse<String> jsonPatchResponse = Unirest.patch("https://127.0.0.1:8443/worker-0.0.1/api/workers/" + workerId)
                     .header("Content-Type", "application/json")
-                    .body(mapper.writeValueAsString(out))
+                    .body(mapper.writeValueAsString(outw))
                     .asString();
             if (jsonPatchResponse.getStatus() == 200) {
-                return "200: Worker was fired";
+                out.setStatus(200);
+                out.setMsg("Worker was fired");
+                return out;
             } else {
                 String msg = jsonPatchResponse.getBody();
-                return jsonPatchResponse.getStatus() + ": " +msg.substring(47, msg.length()- 5);
+                out.setStatus(jsonResponse.getStatus());
+                out.setMsg(mapper.writeValueAsString(msg));
+                return out;
             }
-        } catch (Exception e){
-            return "503: " + "Callable service is down";
+        } catch (Exception e) {
+            e.printStackTrace();
+            errors.addError(500, "Internal service error");
+            try {
+                out.setStatus(500);
+                out.setMsg(mapper.writeValueAsString(errors));
+                return out;
+            } catch (JsonProcessingException ex) {
+                throw new RuntimeException(ex);
+            }
         }
     }
 
     @Transactional
-    public String hireWorker(String salaryStr, String startDate, HireWorkerDTO person){
-
+    public Out hireWorker(String salaryStr, String startDate, HireWorkerDTO person){
+        Errors errors = new Errors();
+        Out out = new Out();
         int salary;
 
         try{
             salary = Integer.parseInt(salaryStr);
         } catch (NumberFormatException e){
-            return "422: Salary should be integer";
+            errors.addError(422, "Salary should be integer");
+            try {
+                out.setStatus(422);
+                out.setMsg(mapper.writeValueAsString(errors));
+                return out;
+            } catch (JsonProcessingException ex) {
+                throw new RuntimeException(ex);
+            }
         }
 
 
@@ -114,12 +158,23 @@ public class HrServiceImpl implements HrService{
         newPerson.setEyeColor(person.getEyeColor());
         newPerson.setHairColor(person.getHairColor());
         if (person.getLocation() != null) {
-            Location location = new Location();
-            location.setName(person.getLocation().getName());
-            location.setX(Double.valueOf(person.getLocation().getX()));
-            location.setY(Double.valueOf(person.getLocation().getY()));
-            location.setZ(Float.valueOf(person.getLocation().getZ()));
-            newPerson.setLocation(location);
+            try {
+                Location location = new Location();
+                location.setName(person.getLocation().getName());
+                location.setX(Double.valueOf(person.getLocation().getX()));
+                location.setY(Double.valueOf(person.getLocation().getY()));
+                location.setZ(Float.valueOf(person.getLocation().getZ()));
+                newPerson.setLocation(location);
+            } catch (NumberFormatException e){
+                errors.addError(422, "Location x,y,z should be double, double, float");
+                out.setStatus(422);
+                try {
+                    out.setMsg(mapper.writeValueAsString(errors));
+                } catch (JsonProcessingException ex) {
+                    throw new RuntimeException(ex);
+                }
+                return out;
+            }
         } else {
             newPerson.setLocation(null);
         }
@@ -128,10 +183,21 @@ public class HrServiceImpl implements HrService{
         worker.setSalary(salary);
         worker.setStartDate(startDate);
         if (person.getCoordinates() != null) {
-            Coordinates coordinates = new Coordinates();
-            coordinates.setX(Long.valueOf(person.getCoordinates().getX()));
-            coordinates.setY(Float.valueOf(person.getCoordinates().getY()));
-            worker.setCoordinates(coordinates);
+            try {
+                Coordinates coordinates = new Coordinates();
+                coordinates.setX(Long.valueOf(person.getCoordinates().getX()));
+                coordinates.setY(Float.valueOf(person.getCoordinates().getY()));
+                worker.setCoordinates(coordinates);
+            } catch (NumberFormatException e){
+                errors.addError(422, "Coordinates x,y should be long and float");
+                out.setStatus(422);
+                try {
+                    out.setMsg(mapper.writeValueAsString(errors));
+                } catch (JsonProcessingException ex) {
+                    throw new RuntimeException(ex);
+                }
+                return out;
+            }
         } else {
             worker.setCoordinates(null);
         }
@@ -143,17 +209,30 @@ public class HrServiceImpl implements HrService{
                     .body(mapper.writeValueAsString(worker))
                     .asString();
             if (jsonPatchResponse.getStatus() == 200) {
-                System.out.println(jsonPatchResponse.getBody());
                 Worker outWorker = mapper.readValue(jsonPatchResponse.getBody(), Worker.class);
-                return "200: " + outWorker.toString();
+                out.setStatus(200);
+                out.setMsg(mapper.writeValueAsString(outWorker));
+                return out;
             } else if (jsonPatchResponse.getStatus() == 404){
-                return "503: " + "Callable service is down";
+                errors.addError(503, "Callable service is down");
+                out.setStatus(503);
+                out.setMsg(mapper.writeValueAsString(errors));
+                return out;
             } else {
                 String msg = jsonPatchResponse.getBody();
-                return jsonPatchResponse.getStatus() + ": " +msg.substring(47, msg.length()- 5);
+                out.setStatus(jsonPatchResponse.getStatus());
+                out.setMsg(msg);
+                return out;
             }
         } catch (Exception e){
-            return "503: " + "Callable service is down";
+            errors.addError(500, "Internal service error");
+            try {
+                out.setStatus(500);
+                out.setMsg(mapper.writeValueAsString(errors));
+                return out;
+            } catch (JsonProcessingException ex) {
+                throw new RuntimeException(ex);
+            }
         }
     }
 
