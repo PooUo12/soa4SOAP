@@ -15,14 +15,8 @@ import lombok.NoArgsConstructor;
 @XmlAccessorType(XmlAccessType.FIELD)
 public class Coordinates {
     @XmlElement
-    private int id;
-    @XmlElement
     private Long x;
     @XmlElement
     private Float y;
 
-    public Coordinates(Long x, Float y){
-        this.x = x;
-        this.y = y;
-    }
 }

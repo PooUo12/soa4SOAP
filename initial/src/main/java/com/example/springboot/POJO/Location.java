@@ -15,8 +15,6 @@ import lombok.NoArgsConstructor;
 
 public class Location {
     @XmlElement
-    private int id;
-    @XmlElement
     private Double x;
     @XmlElement
     private Double y;
@@ -25,10 +23,4 @@ public class Location {
     @XmlElement
     private String name;
 
-    public Location(Double x, Double y, Float z, String name){
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        this.name = name;
-    }
 }

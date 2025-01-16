@@ -16,9 +16,6 @@ import java.util.Date;
 @Data
 @XmlAccessorType(XmlAccessType.FIELD)
 public class Person {
-
-    @XmlElement
-    private int id;
     @XmlElement
     private String birthday;
     @XmlElement

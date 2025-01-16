@@ -17,9 +17,9 @@ public class HireWorkerDTO {
 
     private String nationality;
 
-    private Location location;
+    private LocationDTO location;
 
-    private Coordinates coordinates;
+    private CoordinatesDTO coordinates;
 
     private String name;
 }

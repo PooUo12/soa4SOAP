@@ -1,9 +1,6 @@
 package com.example.springboot;
 
-import com.example.springboot.POJO.HireWorkerDTO;
-import com.example.springboot.POJO.Person;
-import com.example.springboot.POJO.Status;
-import com.example.springboot.POJO.Worker;
+import com.example.springboot.POJO.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.Unirest;
@@ -58,8 +55,7 @@ public class HrServiceImpl implements HrService{
         try{
             workerId = Integer.parseInt(Id);
         } catch (NumberFormatException e){
-            return "Wrong id";
-//            return new AbstractMap.SimpleImmutableEntry<>("Id should be integer", 422);
+            return "422: Id should be integer";
         }
 //        https://127.0.0.1:8443/worker-0.0.1/api/workers/
         try {
@@ -67,14 +63,15 @@ public class HrServiceImpl implements HrService{
                     .header("Content-Type", "application/json")
                     .asString();
             String responseBody = jsonResponse.getBody();
+            if (jsonResponse.getStatus() == 404){
+                return "503: " + "Callable service is down";
+            }
             if (jsonResponse.getStatus() != 200) {
-                return "Worker does not exist";
-//                return new AbstractMap.SimpleImmutableEntry<>("Worker doesn't exist", 422);
+                return "422: Worker does not exist";
             }
             Worker worker = mapper.readValue(responseBody, Worker.class);
             if (worker.getStatus().equalsIgnoreCase(Status.FIRED.toString())) {
-                return "Worker is already fired";
-//                return new AbstractMap.SimpleImmutableEntry<>("Worker is already fired", 422);
+                return "422: Worker is already fired";
             }
             Worker out = new Worker();
             out.setName(worker.getName());
@@ -88,14 +85,13 @@ public class HrServiceImpl implements HrService{
                     .body(mapper.writeValueAsString(out))
                     .asString();
             if (jsonPatchResponse.getStatus() == 200) {
-                return "Worker was fired";
-//                return new AbstractMap.SimpleImmutableEntry<>("Worker was fired :(", 200);
+                return "200: Worker was fired";
             } else {
-                return "500";
-//                return new AbstractMap.SimpleImmutableEntry<>(jsonPatchResponse.getBody(), jsonPatchResponse.getStatus());
+                String msg = jsonPatchResponse.getBody();
+                return jsonPatchResponse.getStatus() + ": " +msg.substring(47, msg.length()- 5);
             }
         } catch (Exception e){
-            return null;
+            return "503: " + "Callable service is down";
         }
     }
 
@@ -107,8 +103,7 @@ public class HrServiceImpl implements HrService{
         try{
             salary = Integer.parseInt(salaryStr);
         } catch (NumberFormatException e){
-            return "Salary should be integer";
-//            return new AbstractMap.SimpleImmutableEntry<>("Salary should be integer", 422);
+            return "422: Salary should be integer";
         }
 
 
@@ -118,12 +113,28 @@ public class HrServiceImpl implements HrService{
         newPerson.setNationality(person.getNationality());
         newPerson.setEyeColor(person.getEyeColor());
         newPerson.setHairColor(person.getHairColor());
-        newPerson.setLocation(person.getLocation());
+        if (person.getLocation() != null) {
+            Location location = new Location();
+            location.setName(person.getLocation().getName());
+            location.setX(Double.valueOf(person.getLocation().getX()));
+            location.setY(Double.valueOf(person.getLocation().getY()));
+            location.setZ(Float.valueOf(person.getLocation().getZ()));
+            newPerson.setLocation(location);
+        } else {
+            newPerson.setLocation(null);
+        }
         worker.setName(person.getName());
         worker.setPerson(newPerson);
         worker.setSalary(salary);
         worker.setStartDate(startDate);
-        worker.setCoordinates(person.getCoordinates());
+        if (person.getCoordinates() != null) {
+            Coordinates coordinates = new Coordinates();
+            coordinates.setX(Long.valueOf(person.getCoordinates().getX()));
+            coordinates.setY(Float.valueOf(person.getCoordinates().getY()));
+            worker.setCoordinates(coordinates);
+        } else {
+            worker.setCoordinates(null);
+        }
         worker.setStatus(Status.HIRED.toString());
         System.out.println(worker);
         try {
@@ -134,14 +145,15 @@ public class HrServiceImpl implements HrService{
             if (jsonPatchResponse.getStatus() == 200) {
                 System.out.println(jsonPatchResponse.getBody());
                 Worker outWorker = mapper.readValue(jsonPatchResponse.getBody(), Worker.class);
-//                return new AbstractMap.SimpleImmutableEntry<>(outWorker, 200);
-                return "Success";
+                return "200: " + outWorker.toString();
+            } else if (jsonPatchResponse.getStatus() == 404){
+                return "503: " + "Callable service is down";
             } else {
-//                return new AbstractMap.SimpleImmutableEntry<>(jsonPatchResponse.getBody().toString(), jsonPatchResponse.getStatus());
-                return "500";
+                String msg = jsonPatchResponse.getBody();
+                return jsonPatchResponse.getStatus() + ": " +msg.substring(47, msg.length()- 5);
             }
         } catch (Exception e){
-            return "500";
+            return "503: " + "Callable service is down";
         }
     }
 
