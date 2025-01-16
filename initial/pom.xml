@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.example</groupId>
-	<artifactId>hrService</artifactId>
+	<artifactId>hrServiceImpl</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>hrService</name>
+	<name>hrServiceImpl</name>
 	<properties>
 		<java.version>17</java.version>
 	</properties>
@@ -19,12 +19,6 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
 		</dependency>
 		<!-- https://mvnrepository.com/artifact/com.sun.jersey/jersey-client -->
 		<dependency>
@@ -55,6 +49,20 @@
 			<artifactId>lombok</artifactId>
 			<scope>provided</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.apache.cxf</groupId>
+			<artifactId>cxf-spring-boot-starter-jaxws</artifactId>
+			<version>4.0.5</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.springframework.ws/spring-ws-core -->
+		<dependency>
+			<groupId>org.springframework.ws</groupId>
+			<artifactId>spring-ws-core</artifactId>
+			<version>4.0.11</version>
+		</dependency>
+
+
+
 
 	</dependencies>
 
@@ -64,7 +72,26 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>jaxb2-maven-plugin</artifactId>
+				<version>3.1.0</version>
+				<executions>
+					<execution>
+						<id>xjc</id>
+						<goals>
+							<goal>xjc</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<sources>
+						<source>${project.basedir}/src/main/resources/countries.xsd</source>
+					</sources>
+				</configuration>
+			</plugin>
 		</plugins>
+
 	</build>
 
 </project>

@@ -1,14 +1,14 @@
 package com.example.springboot.POJO;
 
-
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@AllArgsConstructor
-@NoArgsConstructor
 @Data
-public class HireWorkerDTO {
+public class HireDTO {
+
+    private String salary;
+
+    private String startDate;
+
     private String birthday;
 
     private String eyeColor;
