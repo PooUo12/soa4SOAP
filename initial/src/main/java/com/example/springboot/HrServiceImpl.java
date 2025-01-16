@@ -120,9 +120,9 @@ public class HrServiceImpl implements HrService{
             }
         } catch (Exception e) {
             e.printStackTrace();
-            errors.addError(500, "Internal service error");
+            errors.addError(503, "Callable service is down");
             try {
-                out.setStatus(500);
+                out.setStatus(503);
                 out.setMsg(mapper.writeValueAsString(errors));
                 return out;
             } catch (JsonProcessingException ex) {
@@ -225,9 +225,9 @@ public class HrServiceImpl implements HrService{
                 return out;
             }
         } catch (Exception e){
-            errors.addError(500, "Internal service error");
+            errors.addError(503, "Callable service is down");
             try {
-                out.setStatus(500);
+                out.setStatus(503);
                 out.setMsg(mapper.writeValueAsString(errors));
                 return out;
             } catch (JsonProcessingException ex) {
